@@ -28,20 +28,20 @@ if(SS_DIR)
     add_definitions(-DNBLAS)
   endif()
 
+  # Add SuiteSparse config
   if(EXISTS "${SS_DIR}/SuiteSparse_config")
     include_directories(${SS_DIR}/SuiteSparse_config)
     add_library(SuiteSparse_config ${SS_DIR}/SuiteSparse_config/SuiteSparse_config.c)
-    install(FILES ${SS_DIR}/SuiteSparse_config/SuiteSparse_config.h
-        DESTINATION include/omc/c/suitesparse)
-    install(TARGETS SuiteSparse_config)
+    install(TARGETS SuiteSparse_config DESTINATION ${CMAKE_INSTALL_LIBDIR})
+    install(FILES ${SS_DIR}/SuiteSparse_config/SuiteSparse_config.h TYPE INCLUDE)
   elseif(EXISTS "${SS_DIR}/UFconfig")
     include_directories(${SS_DIR}/UFconfig)
-    install(FILES ${SS_DIR}/UFconfig/UFconfig.h
-        DESTINATION include/omc/c/suitesparse)
+    install(FILES ${SS_DIR}/UFconfig/UFconfig.h TYPE INCLUDE)
   else()
     message(ERROR "unknown suitesparse configuration")
   endif()
 
+  # Add CHOLMOD
   if(WITH_CHOLMOD)
     include_directories(${SS_DIR}/CHOLMOD/Include)
     set(COLAMD_DIR ${SS_DIR}/COLAMD)
@@ -67,7 +67,7 @@ if(SS_DIR)
 
 
     install(TARGETS colamd)
-    install(FILES ${COLAMD_DIR}/Include/colamd.h DESTINATION Include)
+    install(FILES ${COLAMD_DIR}/Include/colamd.h TYPE INCLUDE)
 
     set(CHOL_DIRS Core Check Cholesky MatrixOps Partition Modify Supernodal)
     unset(CHOL_SRC_FILES)
@@ -97,19 +97,17 @@ if(SS_DIR)
     foreach(curF IN LISTS cholH)
       if(${curF} MATCHES "cholmod_internal.h")
       else()
-        install(FILES "${curF}" DESTINATION "Include")
+        install(FILES "${curF}" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
       endif()
     endforeach()
   else()
     add_definitions(-DNCHOLMOD)
   endif()
 
-  #collect and build the AMD part
+  # Collect and build the AMD part
   set(AMD_DIR "${SS_DIR}/AMD")
   include_directories(${AMD_DIR}/Include)
   include_directories(${AMD_DIR}/Source)
-  install(DIRECTORY ${AMD_DIR}/Include
-    DESTINATION include/omc/c/suitesparse)
   file(GLOB curFiles "${AMD_DIR}/Source/*.c")
   foreach(sFile IN LISTS curFiles)
     if(${sFile} MATCHES "amd_global.c")
@@ -130,12 +128,12 @@ if(SS_DIR)
   endforeach()
   add_library(amd ${AMD_OBJECTS})
   install(TARGETS amd DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  install(FILES ${AMD_DIR}/Include/amd.h TYPE INCLUDE)
 
-  #collect and build the BTF part
+  # Collect and build the BTF part
   set(BTF_DIR "${SS_DIR}/BTF")
   include_directories(${BTF_DIR}/Include)
   include_directories(${BTF_DIR}/Source)
-  #install(DIRECTORY ${BTF_DIR}/Include DESTINATION include/omc/c/suitesparse)
   file(GLOB curFiles "${BTF_DIR}/Source/*.c")
   foreach(sFile IN LISTS curFiles)
     list(APPEND BTF_SRC_FILES ${sFile})
@@ -151,9 +149,9 @@ if(SS_DIR)
   endforeach()
   add_library(btf ${BTF_OBJECTS})
   install(TARGETS btf DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES ${BTF_DIR}/Include/btf.h DESTINATION include/omc/c/suitesparse)
+  install(FILES ${BTF_DIR}/Include/btf.h TYPE INCLUDE)
 
-  #add colamd
+  # Collect and build the COLAMD
   set(COLAMD_DIR "${SS_DIR}/COLAMD")
   include_directories(${COLAMD_DIR}/Include)
   include_directories(${COLAMD_DIR}/Source)
@@ -168,9 +166,9 @@ if(SS_DIR)
   endif (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUXX)
   
   install(TARGETS colamd DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES ${COLAMD_DIR}/Include/colamd.h DESTINATION include/omc/c/suitesparse)
+  install(FILES ${COLAMD_DIR}/Include/colamd.h TYPE INCLUDE)
 
-  #add klu
+  # Add KLU
   set(KLU_DIR "${SS_DIR}/KLU")
   include_directories(${KLU_DIR}/Include)
   include_directories(${KLU_DIR}/Source)
@@ -190,12 +188,13 @@ if(SS_DIR)
   add_library(klu ${KLU_OBJECTS})
   target_link_libraries(klu btf colamd amd)
   install(TARGETS klu DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES ${KLU_DIR}/Include/klu.h DESTINATION include/omc/c/suitesparse)
+  install(FILES ${KLU_DIR}/Include/klu.h TYPE INCLUDE)
 
-  include_directories(${SS_DIR}/UMFPACK/Include)
-  include_directories(${SS_DIR}/UMFPACK/Source)
-  install(DIRECTORY ${SS_DIR}/UMFPACK/Include
-    DESTINATION include/omc/c/suitesparse)
+
+  # Add UMFPACK
+  set(UMFPACK_DIR "${SS_DIR}/UMFPACK")
+  include_directories(${UMFPACK_DIR}/Include)
+  include_directories(${UMFPACK_DIR}/Source)
   #collect the umfpack files
   #umfpack structure:
   #   *global, -: umfpack_(global | timer | tictoc).c
@@ -233,7 +232,7 @@ if(SS_DIR)
   set(umfpack_others_files "*")
   set(umfpack_others_groups "DINT;DLONG;ZINT;ZLONG")
 
-  processGroups(umfpack "global;analyze;hsolve;triplet;assemble;store;solve" "${SS_DIR}/UMFPACK/Source/")
+  processGroups(umfpack "global;analyze;hsolve;triplet;assemble;store;solve" "${UMFPACK_DIR}/Source/")
   unset(UMFPACK_OBJECTS )
   foreach( olib IN LISTS list_umfpack_olib)
     add_library(${olib} OBJECT ${${olib}})
@@ -256,6 +255,7 @@ if(SS_DIR)
   add_library(umfpack ${UMFPACK_OBJECTS})
   target_link_libraries(umfpack amd)
   install(TARGETS umfpack DESTINATION ${CMAKE_INSTALL_LIBDIR})
+  install(DIRECTORY "${UMFPACK_DIR}/Include/" TYPE INCLUDE)
 
 
   set(PACKAGE_TITLE "small umfpack")
@@ -264,5 +264,5 @@ if(SS_DIR)
   set(CPACK_GENERATOR "TGZ" "TBZ2" "ZIP")
   include(CPack)
 else()
-  message("could not find the suitesparse sources, so won't build anything")
+  message(FATAL_ERROR "could not find the suitesparse sources, so won't build anything")
 endif()
