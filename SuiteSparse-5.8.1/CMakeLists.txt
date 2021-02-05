@@ -33,10 +33,10 @@ if(SS_DIR)
     include_directories(${SS_DIR}/SuiteSparse_config)
     add_library(SuiteSparse_config ${SS_DIR}/SuiteSparse_config/SuiteSparse_config.c)
     install(TARGETS SuiteSparse_config DESTINATION ${CMAKE_INSTALL_LIBDIR})
-    install(FILES ${SS_DIR}/SuiteSparse_config/SuiteSparse_config.h TYPE INCLUDE DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(FILES ${SS_DIR}/SuiteSparse_config/SuiteSparse_config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
   elseif(EXISTS "${SS_DIR}/UFconfig")
     include_directories(${SS_DIR}/UFconfig)
-    install(FILES ${SS_DIR}/UFconfig/UFconfig.h TYPE INCLUDE DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(FILES ${SS_DIR}/UFconfig/UFconfig.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
   else()
     message(ERROR "unknown suitesparse configuration")
   endif()
@@ -67,7 +67,7 @@ if(SS_DIR)
 
 
     install(TARGETS colamd DESTINATION ${CMAKE_INSTALL_LIBDIR})
-    install(FILES ${COLAMD_DIR}/Include/colamd.h TYPE INCLUDE DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+    install(FILES ${COLAMD_DIR}/Include/colamd.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
     set(CHOL_DIRS Core Check Cholesky MatrixOps Partition Modify Supernodal)
     unset(CHOL_SRC_FILES)
@@ -128,7 +128,7 @@ if(SS_DIR)
   endforeach()
   add_library(amd ${AMD_OBJECTS})
   install(TARGETS amd DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES ${AMD_DIR}/Include/amd.h TYPE INCLUDE DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  install(FILES ${AMD_DIR}/Include/amd.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
   # Collect and build the BTF part
   set(BTF_DIR "${SS_DIR}/BTF")
@@ -149,7 +149,7 @@ if(SS_DIR)
   endforeach()
   add_library(btf ${BTF_OBJECTS})
   install(TARGETS btf DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES ${BTF_DIR}/Include/btf.h TYPE INCLUDE DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  install(FILES ${BTF_DIR}/Include/btf.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
   # Collect and build the COLAMD
   set(COLAMD_DIR "${SS_DIR}/COLAMD")
@@ -166,7 +166,7 @@ if(SS_DIR)
   endif (CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_GNUXX)
   
   install(TARGETS colamd DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES ${COLAMD_DIR}/Include/colamd.h TYPE INCLUDE DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  install(FILES ${COLAMD_DIR}/Include/colamd.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
   # Add KLU
   set(KLU_DIR "${SS_DIR}/KLU")
@@ -188,7 +188,7 @@ if(SS_DIR)
   add_library(klu ${KLU_OBJECTS})
   target_link_libraries(klu btf colamd amd)
   install(TARGETS klu DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(FILES ${KLU_DIR}/Include/klu.h TYPE INCLUDE DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  install(FILES ${KLU_DIR}/Include/klu.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
   # Add UMFPACK
@@ -255,7 +255,7 @@ if(SS_DIR)
   add_library(umfpack ${UMFPACK_OBJECTS})
   target_link_libraries(umfpack amd)
   install(TARGETS umfpack DESTINATION ${CMAKE_INSTALL_LIBDIR})
-  install(DIRECTORY "${UMFPACK_DIR}/Include/" TYPE INCLUDE DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+  install(DIRECTORY "${UMFPACK_DIR}/Include/" DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 
   set(PACKAGE_TITLE "small umfpack")
