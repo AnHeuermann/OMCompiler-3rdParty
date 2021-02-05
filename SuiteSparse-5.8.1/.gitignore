@@ -215,6 +215,9 @@ ktruss/ktruss_main
 ssget/files/ss_index_old.mat
 ssget/files/ssstats_old.csv
 
+# Ignore build directory used by CMake
+build/
+
 # Do not ignore this file
 !.gitignore
 
