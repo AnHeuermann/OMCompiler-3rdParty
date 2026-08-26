@@ -1,6 +1,91 @@
-project(OMCompiler_3rdParty)
+cmake_minimum_required(VERSION 3.14)
+project(OMCompiler_3rdParty C CXX)
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+
+# This directory is normally added as a subdirectory of the OpenModelica
+# superproject, which sets up a number of things before it that are not part of
+# this repository. When it is the top of the build instead, provide the minimum
+# needed here so that
+#
+#   cmake -S . -B build && cmake --build build -j$(nproc)
+#
+# works on its own. That is what .github/workflows/build.yml uses to build-test
+# this repository; the real OpenModelica build never enters this branch, so
+# nothing below can change how OpenModelica itself is configured.
+#
+# PROJECT_IS_TOP_LEVEL says the same thing but needs CMake 3.21.
+if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+
+  # The superproject pins this to "lib" instead of letting GNUInstallDirs pick
+  # lib64 on RHEL-based distros.
+  set(CMAKE_INSTALL_LIBDIR "lib")
+  include(GNUInstallDirs)
+
+  # --- from OpenModelica/cmake/omc_utils.cmake -------------------------------
+  set(CMAKE_MESSAGE_CONTEXT_SHOW ON)
+  macro(omc_add_subdirectory var)
+    list(APPEND CMAKE_MESSAGE_CONTEXT ${var})
+    add_subdirectory(${ARGV0} ${ARGV1} ${ARGV2})
+    list(POP_BACK CMAKE_MESSAGE_CONTEXT)
+  endmacro()
+
+  # --- from OpenModelica/cmake/omc_check_exists.cmake ------------------------
+  include(CheckFunctionExists)
+  include(CheckIncludeFile)
+  include(CheckIncludeFiles)
+  include(CheckTypeSize)
+
+  macro(omc_check_function_exists_and_define func_name)
+    string(TOUPPER ${func_name} DEFINE_SUFFIX)
+    check_function_exists(${func_name} HAVE_${DEFINE_SUFFIX})
+  endmacro()
+
+  macro(omc_check_functions_exist_and_define_each func_names)
+    foreach(func_name ${func_names})
+      string(TOUPPER ${func_name} DEFINE_SUFFIX)
+      check_function_exists(${func_name} HAVE_${DEFINE_SUFFIX})
+    endforeach()
+  endmacro()
+
+  macro(omc_check_header_exists_and_define header_name)
+    string(TOUPPER ${header_name} DEFINE_SUFFIX)
+    string(REPLACE "." "_" DEFINE_SUFFIX ${DEFINE_SUFFIX})
+    string(REPLACE "/" "_" DEFINE_SUFFIX ${DEFINE_SUFFIX})
+    check_include_file(${header_name} HAVE_${DEFINE_SUFFIX})
+  endmacro()
+
+  macro(omc_check_headers_exist_and_define_each header_names)
+    foreach(header_name ${header_names})
+      omc_check_header_exists_and_define(${header_name})
+    endforeach()
+  endmacro()
+
+  # --- from OMCompiler/CMakeLists.txt ----------------------------------------
+  option(OM_OMC_ENABLE_FORTRAN "Enable Fortran support." ON)
+  if(OM_OMC_ENABLE_FORTRAN)
+    enable_language(Fortran)
+  endif()
+  option(OM_OMC_ENABLE_OPTIMIZATION "Build the old Optimization Runtime (moo, ipopt)." ON)
+  option(OM_OMC_ENABLE_PRIMME "Build PRIMME." ON)
+  option(OM_OMC_ENABLE_COLPACK "Build ColPack." ON)
+
+  # --- from OpenModelica/cmake/OMCPThreads.cmake -----------------------------
+  # gc links to this. Only the non-MSVC branch is reproduced: the standalone
+  # build targets GCC and MSYS2/UCRT64, both of which take that branch. An MSVC
+  # standalone build would additionally need PThreads4W (e.g. from vcpkg).
+  find_package(Threads)
+  add_library(OMCPThreads INTERFACE)
+  target_link_libraries(OMCPThreads INTERFACE Threads::Threads ${CMAKE_DL_LIBS})
+  target_compile_definitions(OMCPThreads INTERFACE OM_HAVE_PTHREADS)
+  add_library(OMCPThreads::OMCPThreads ALIAS OMCPThreads)
+
+  # --- from OpenModelica/CMakeLists.txt --------------------------------------
+  # SUNDIALS is configured with LAPACK enabled below, and moo/ipopt needs BLAS.
+  find_package(BLAS)
+  find_package(LAPACK)
+
+endif()
 
 # ryu
 omc_add_subdirectory(ryu)
@@ -8,16 +93,16 @@ add_library(omc::3rd::ryu ALIAS ryu)
 
 # zlib
 option(OM_USE_SYSTEM_ZLIB "Use system zlib" OFF)
-if (OM_USE_SYSTEM_ZLIB)
+if(OM_USE_SYSTEM_ZLIB)
   set(ZLIB_USE_STATIC_LIBS ON)
   find_package(ZLIB MODULE REQUIRED)
   unset(ZLIB_USE_STATIC_LIBS)
   add_library(omc::3rd::zlib INTERFACE)
   target_link_libraries(omc::3rd::zlib INTERFACE ZLIB::ZLIB)
-else ()
+else()
   omc_add_subdirectory(zlib)
   add_library(omc::3rd::zlib ALIAS zlib)
-endif ()
+endif()
 
 # antlr
 omc_add_subdirectory(antlr)
@@ -29,13 +114,13 @@ add_library(omc::3rd::cdaskr ALIAS cdaskr)
 
 # CMinpack
 option(OM_USE_SYSTEM_CMINPACK "Use system cminpack" OFF)
-if (OM_USE_SYSTEM_CMINPACK)
+if(OM_USE_SYSTEM_CMINPACK)
   find_package(CMinpack CONFIG REQUIRED)
   add_library(cminpack INTERFACE)
   target_link_libraries(cminpack INTERFACE cminpack::cminpack)
-else ()
+else()
   omc_add_subdirectory(CMinpack)
-endif ()
+endif()
 add_library(omc::3rd::cminpack ALIAS cminpack)
 
 # # cppzmq
@@ -44,18 +129,18 @@ add_library(omc::3rd::cminpack ALIAS cminpack)
 
 
 # FMIL
-set (FMILIB_GENERATE_DOXYGEN_DOC OFF CACHE BOOL "Generate doxygen doc target")
-set (FMILIB_BUILD_TESTS OFF CACHE BOOL "Build tests")
-set (FMILIB_BUILD_SHARED_LIB OFF CACHE BOOL "Build the library as shared (dll/so/dylib).")
+set(FMILIB_GENERATE_DOXYGEN_DOC OFF CACHE BOOL "Generate doxygen doc target")
+set(FMILIB_BUILD_TESTS OFF CACHE BOOL "Build tests")
+set(FMILIB_BUILD_SHARED_LIB OFF CACHE BOOL "Build the library as shared (dll/so/dylib).")
 # Build the bundled Expat as a subdirectory. FMIL builds it as an ExternalProject by
 # default, which leaves an imported target that the rest of the build cannot link to.
-set (FMILIB_EXPAT_AS_SUBPROJECT ON CACHE BOOL "Build the bundled Expat with add_subdirectory")
+set(FMILIB_EXPAT_AS_SUBPROJECT ON CACHE BOOL "Build the bundled Expat with add_subdirectory")
 # On Windows, Expat defaults to appending a "d" postfix to its Debug build output
 # (EXPAT_DEBUG_POSTFIX), producing libexpatd.a instead of libexpat.a. No other
 # static lib in this tree does that, and the OMSI/OMSU FMU packaging Makefile
 # (CodegenOMSIC.tpl) copies it via the glob "lib$(EXPAT_LIB).*", which only
 # matches the plain name. Force the postfix empty to keep the filename stable.
-set (EXPAT_DEBUG_POSTFIX "" CACHE STRING "Library filename postfix for Debug builds" FORCE)
+set(EXPAT_DEBUG_POSTFIX "" CACHE STRING "Library filename postfix for Debug builds" FORCE)
 # zlib is added above, so FMIL picks up that target instead of building its own copy.
 omc_add_subdirectory(FMIL)
 
@@ -118,9 +203,9 @@ target_include_directories(omcgc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/gc/include)
 # Even on Windows OM uses pthreads. GC_WIN32_PTHREADS is required
 # to be set explicitly for use of pthreads API on Windows.
 if(WIN32)
-    target_compile_definitions(omcgc PUBLIC GC_WIN32_PTHREADS)
+  target_compile_definitions(omcgc PUBLIC GC_WIN32_PTHREADS)
 else()
-    target_compile_definitions(omcgc PUBLIC GC_THREADS)
+  target_compile_definitions(omcgc PUBLIC GC_THREADS)
 endif()
 
 # Finally add an alias for clarity purposes.
@@ -132,20 +217,20 @@ add_library(omc::3rd::omcgc ALIAS omcgc)
 
 # libffi
 option(OM_USE_SYSTEM_LIBFFI "Use system libffi" OFF)
-if (OM_USE_SYSTEM_LIBFFI)
+if(OM_USE_SYSTEM_LIBFFI)
   find_package(LibFFI MODULE REQUIRED)
   add_library(ffi INTERFACE)
   target_include_directories(ffi INTERFACE ${LIBFFI_INCLUDE_DIRS})
   target_link_libraries(ffi INTERFACE ${LIBFFI_LIBRARIES})
-elseif (CMAKE_CROSSCOMPILING)
+elseif(CMAKE_CROSSCOMPILING)
   add_library(ffi INTERFACE)
-else ()
+else()
   omc_add_subdirectory(libffi)
   target_include_directories(ffi INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/libffi/include)
   # Currently the libffi setup puts the configure-generated headers in the
   # `build directory`/include folder
   target_include_directories(ffi INTERFACE ${libffi_BINARY_DIR}/include)
-endif ()
+endif()
 add_library(omc::3rd::ffi ALIAS ffi)
 
 
@@ -153,18 +238,18 @@ add_library(omc::3rd::ffi ALIAS ffi)
 
 # libzmq
 option(OM_USE_SYSTEM_ZMQ "Use system zmq" OFF)
-if (OM_USE_SYSTEM_ZMQ)
+if(OM_USE_SYSTEM_ZMQ)
   find_package(ZeroMQ CONFIG REQUIRED)
   add_library(zmq INTERFACE)
   target_link_libraries(zmq INTERFACE libzmq)
   add_library(omc::3rd::libzmq ALIAS zmq)
-else ()
-  set (ZMQ_BUILD_TESTS OFF CACHE BOOL "Build the tests for ZeroMQ")
-  set (ZMQ_BUILD_STATIC ON CACHE BOOL "Whether or not to build the static object")
-  set (ZMQ_BUILD_SHARED OFF CACHE BOOL "Whether or not to build the shared object")
+else()
+  set(ZMQ_BUILD_TESTS OFF CACHE BOOL "Build the tests for ZeroMQ")
+  set(ZMQ_BUILD_STATIC ON CACHE BOOL "Whether or not to build the static object")
+  set(ZMQ_BUILD_SHARED OFF CACHE BOOL "Whether or not to build the shared object")
   omc_add_subdirectory(libzmq)
   add_library(omc::3rd::libzmq ALIAS libzmq-static)
-endif ()
+endif()
 
 
 # simdjson
@@ -219,7 +304,7 @@ if(CMAKE_BUILD_TYPE)
   endif()
 endif()
 set(OMC_PARMODELICA_TBB_LINK_NAME "${_omc_tbb_output_name}${_omc_tbb_postfix}"
-    CACHE INTERNAL "oneTBB library name generated --parmodauto simulators link against")
+  CACHE INTERNAL "oneTBB library name generated --parmodauto simulators link against")
 
 
 # regex
@@ -339,18 +424,18 @@ add_library(omc::3rd::sundials::sunlinsolklu ALIAS sundials_sunlinsolklu_static)
 add_library(omc::3rd::sundials::sunlinsollapackdense ALIAS sundials_sunlinsollapackdense_static)
 
 if(OM_OMC_ENABLE_OPTIMIZATION)
-    add_library(EXTERNAL_METIS_TARGET ALIAS metis)
-    omc_add_subdirectory(moo-0.1.0)
-    add_library(omc::3rd::moo ALIAS moo)
-    add_library(omc::3rd::ipopt ALIAS ipopt)
+  add_library(EXTERNAL_METIS_TARGET ALIAS metis)
+  omc_add_subdirectory(moo-0.1.0)
+  add_library(omc::3rd::moo ALIAS moo)
+  add_library(omc::3rd::ipopt ALIAS ipopt)
 endif() # OM_OMC_ENABLE_OPTIMIZATION
 
 if(OM_OMC_ENABLE_PRIMME)
-    omc_add_subdirectory(primme-3.2.3)
-    add_library(omc::3rd::primme ALIAS primme)
+  omc_add_subdirectory(primme-3.2.3)
+  add_library(omc::3rd::primme ALIAS primme)
 endif() # OM_OMC_ENABLE_PRIMME
 
 if(OM_OMC_ENABLE_COLPACK)
-    omc_add_subdirectory(ColPack)
-    add_library(omc::3rd::colpack ALIAS colpack)
+  omc_add_subdirectory(ColPack)
+  add_library(omc::3rd::colpack ALIAS colpack)
 endif() # OM_OMC_ENABLE_COLPACK
