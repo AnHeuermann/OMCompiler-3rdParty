@@ -73,9 +73,9 @@ jobs:
           install: >-
             make
           # :p expands to the mingw-w64-ucrt-x86_64-* package of the same name.
-          # toolchain brings gcc and gfortran, openblas provides BLAS + LAPACK.
           pacboy: >-
             toolchain:p
+            gcc-fortran:p
             cmake:p
             openblas:p
 
