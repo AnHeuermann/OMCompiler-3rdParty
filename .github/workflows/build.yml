@@ -24,7 +24,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
         with:
-          # SuiteSparse and sundials are submodules of this repository.
           submodules: recursive
 
       - name: Install dependencies
@@ -61,7 +60,6 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
         with:
-          # SuiteSparse and sundials are submodules of this repository.
           submodules: recursive
 
       - uses: msys2/setup-msys2@66cd2cce69caa17b53920067426061ca1de3a884 #v2.32.0
@@ -86,3 +84,29 @@ jobs:
 
       - name: Build
         run: cmake --build build -j$(nproc)
+
+  macos:
+    name: macOS (${{ matrix.build-type }})
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    strategy:
+      fail-fast: false
+      matrix:
+        build-type: [Release]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 #v7.0.1
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: brew install gcc
+
+      - name: Configure
+        run: |
+          cmake -S . -B build -G "Unix Makefiles" \
+            -DCMAKE_BUILD_TYPE=${{ matrix.build-type }}
+
+      - name: Build
+        run: cmake --build build -j$(sysctl -n hw.ncpu)
